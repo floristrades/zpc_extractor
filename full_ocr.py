@@ -12,7 +12,7 @@ def count_csv_rows(pair_tf):
     csv_file_path = os.path.abspath(f"zpc_csv/zpc_{pair_tf}.csv")
     with open(csv_file_path, 'r') as file:
         reader = csv.reader(file)
-        row_count = sum(1 for _ in reader)
+        row_count = sum(1 for _ in reader) - 1
     return row_count
 
 # Save the timestamp for unique file naming
@@ -21,6 +21,8 @@ def get_timestamp():
 
 # Save image on home key press
 def save_image(event):
+    counter()
+    #save_ohlc()
     global pair_tf
     hotkey_label.place_forget()
     pair_tf = pair_entry.get()  # Get pair_tf from the input field
@@ -95,6 +97,49 @@ def save_image(event):
         hotkey_text.set("\nPress home to capture.")
         hotkey_label.place(x=75, y=10)
 
+
+# Save image on home key press
+def save_ohlc(event):
+    # Capture screenshot
+    screenshot = pyautogui.screenshot()
+    image = screenshot.copy()
+
+    # Add blue box in the middle
+    draw = ImageDraw.Draw(image)
+    width, height = image.size
+    box_size = 100
+    x0 = 64
+    y0 = 68
+    x1 = 340
+    y1 = 110
+    top_left = (x0, y0)
+    bottom_right = (x1, y1)
+    draw.rectangle((top_left, bottom_right), outline="blue", width=3)
+
+    ohlc_box = image.crop((x0, y0, x1, y1))
+
+    image.open(ohlc_box)
+
+    # Set the path to the Tesseract executable (Update with your path)
+    pytesseract.pytesseract.tesseract_cmd = './Tesseract-OCR/tesseract.exe'
+
+    # Perform OCR using pytesseract
+    ohlc_text = pytesseract.image_to_string(ohlc_box)
+
+    save_text = tk.StringVar()
+    save_label = tk.Label(root, textvariable=save_text, font=("Arial", 11), justify="center", fg=text_color, bg="black")
+    save_label.pack(anchor="center")
+    save_label.place(x=50, y=80)   
+    # Pack the save label with horizontal centering
+    save_label.pack(anchor="center", padx=5)
+    save_label.place(relx=0.5, y=80, anchor="center")
+    save_text.set(f"{ohlc_text}")
+
+    if not ohlc_text:
+        hotkey_text.set("OCR Result is empty!")
+
+
+
 def save_label_succes():
         save_text = tk.StringVar()
         save_label = tk.Label(root, textvariable=save_text, font=("Arial", 11), justify="center", fg=text_color, bg="black")
@@ -104,6 +149,7 @@ def save_label_succes():
         save_label.pack(anchor="center", padx=5)
         save_label.place(relx=0.5, y=80, anchor="center")
         save_text.set(f"Saved to zpc_{pair_tf}.csv successfully!")
+
         time.sleep(1)
         save_text.set("")
 
@@ -118,7 +164,7 @@ def save_label_error():
         save_text.set(f"Failed to save to zpc_{pair_tf}.csv!")
         time.sleep(1)
         save_text.set("")
-        counter()
+        
 
 def exit_program():
     root.destroy()
@@ -164,13 +210,12 @@ def start_listening():
         hotkey_text.set("Error: Enter pair_tf value!")
 
 def counter():
-    #count_csv_rows()
     rows = count_csv_rows(pair_tf)
-    # Creating a label for the counter of the amount of zpc's
-    counter_label = tk.Label(root, text=f"ZPC's logged: {rows}", font=("Arial", 9), fg=text_color, bg=f"{text_color_input}")
-    #(pady=5, anchor="center")
-    #counter_label.place(x=95, y=10)
+    row_text = tk.StringVar()
+    row_text.set(f"ZPC's logged: {rows}")  
+    counter_label = tk.Label(root, textvariable=row_text, font=("Arial", 9), fg=text_color, bg=f"{text_color_input}")
     counter_label.pack(side=tk.RIGHT, padx=10, pady=10, anchor=tk.SE)
+    counter_label.place(x=10, y=112)
 
 # Create the Tkinter window
 root = tk.Tk()
@@ -193,7 +238,7 @@ input_label = tk.Label(root, text="Please input pair_tf", font=("Arial", 14), fg
 pair_entry = tk.Entry(root, font=("Arial", 12), fg=text_color_input, bg=input_color)
 
 # Create a label to display the list of .csv files
-csv_label = tk.Label(root, text="No .csv files found", font=("Arial", 12), justify="left", fg="white", bg="black")
+csv_label = tk.Label(root, text="No .csv files found", font=("Arial", 12), justify="left", fg="white", bg="black", anchor="center")
 
 # Create a button to start the listening process
 home_button = tk.Button(root, text="Start Listening", command=start_listening, fg=text_color_input, bg=input_color)
@@ -242,6 +287,9 @@ def update_csv_list():
 
 def check_csv_file(csv_file):
     file_exists = os.path.isfile(csv_file)
+    with open(csv_file, 'w') as file:
+        writer = csv.append(file)
+        writer.append("\n")
 
 def csv_create_file():
     file_exists = os.path.isfile(csv_file)
